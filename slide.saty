@@ -1,0 +1,73 @@
+@require: class-slydifi/theme/akasaka
+@require: code-printer/code-design
+@require: code-printer/code-printer
+@require: code-printer/code-syntax
+@require: code-printer/code-theme
+@require: figbox/figbox
+
+let ex-big-textbox ?:size-opt it =
+  let size = Option.from 48pt size-opt in
+    FigBox.textbox?:(set-font-size size) it
+
+let big-textbox ?:size-opt it =
+  let size = Option.from 32pt size-opt in
+    FigBox.textbox?:(set-font-size size) it
+
+let mid-textbox ?:size-opt it =
+  let size = Option.from 24pt size-opt in
+    FigBox.textbox?:(set-font-size size) it
+
+let with-frame figbox = figbox
+  |> FigBox.hvmargin 16pt
+  |> FigBox.frame 2pt Color.black
+
+let-block +code-block-php source =
+  '<
+    +code-printer?:(
+      CodePrinter.make-config CodeSyntax.php CodeTheme.iceberg-light
+      |> CodePrinter.set-number-fun CodeDesign.number-fun-null
+    )(source);
+  >
+
+open FigBox
+in
+
+document '<
+  +set-config(|
+    SlydifiThemeAkasaka.default-config with
+    color-emph = Color.black;
+  |);
+
+  +make-title(|
+    title = {
+      |TODO
+      |};
+    author = {|nsfisis (いまむら)|};
+    date = {|第TODO回PHP勉強会＠東京|};
+  |);
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  +frame{自己紹介}<
+    +fig-center(vconcat [
+      gap 30pt;
+      big-textbox{いまむら};
+    ]);
+    +fig-center(vconcat [
+      ex-big-textbox{nsfisis};
+    ]);
+    +fig-center(vconcat [
+      include-image 128pt `assets/me.jpeg`;
+    ]);
+    +fig-center(vconcat [
+      big-textbox{\@ デジタルサーカス株式会社};
+    ]);
+  >
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  +frame{まとめ}<
+    +p{TODO}
+  >
+
+>
