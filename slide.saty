@@ -26,6 +26,7 @@ let-block +code-block-php source =
     +code-printer?:(
       CodePrinter.make-config CodeSyntax.php CodeTheme.iceberg-light
       |> CodePrinter.set-number-fun CodeDesign.number-fun-null
+      |> CodePrinter.set-basic-font-size 16pt
     )(source);
   >
 
@@ -40,10 +41,10 @@ document '<
 
   +make-title(|
     title = {
-      |TODO
+      |PHPでPHPを作る(縮小版)
       |};
     author = {|nsfisis (いまむら)|};
-    date = {|第TODO回PHP勉強会＠東京|};
+    date = {|第169回PHP勉強会＠東京|};
   |);
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -66,8 +67,317 @@ document '<
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+  +frame{PHPでPHPを作る}<
+    +listing{
+      * 簡単な言語処理系は簡単に作れる
+      * PHPでも言語処理系を作れる
+    }
+  >
+
+  +frame{PHPでPHPを作る}<
+    +listing{
+      * 簡単な言語処理系は簡単に作れる
+      * PHPでも言語処理系を作れる
+      * PHPで、FizzBuzz が動くだけの PHP 処理系を実装してみよう
+    }
+  >
+
+  +frame{今回の制約}<
+    +listing{
+      * なるべく言語処理系特有の知識・専門用語を使わずに実装・説明してみる
+      * 今回のプログラムがギリギリ動かせるくらいのミニマムで愚直な実装を目指す
+      * 今回出てこない用語: 文法クラス、構文解析、AST、VM、バイトコード等
+    }
+  >
+
+  +frame{動かすプログラム(FizzBuzz)}<
+    +code-block-php(`<?php
+for ($i = 1; $i <= 100; $i++) {
+  if ($i % 15 === 0) {
+    echo "FizzBuzz";
+  } elseif ($i % 3 === 0) {
+    echo "Fizz";
+  } elseif ($i % 5 === 0) {
+    echo "Buzz";
+  } else {
+    echo $i;
+  }
+  echo "\n";
+}`);
+  >
+
+  +frame{全体の流れ}<
+    +enumerate{
+      * ソースコードという一かたまりの文字列を意味のある最小単位(単語)に分割する
+      * 前から順番に単語を見ていき、それに対応した処理をおこなう
+    }
+  >
+
+  +frame{単語への分割}<
+    +code-block-php(`<?php
+for ($i = 1; $i <= 100; $i++) {
+  if ($i % 15 === 0) {
+    echo "FizzBuzz";
+  } elseif ($i % 3 === 0) {
+    echo "Fizz";
+  } elseif ($i % 5 === 0) {
+    echo "Buzz";
+  } else {
+    echo $i;
+  }
+  echo "\n";
+}`);
+  >
+
+  +frame{単語への分割}<
+    +code-block-php(`function split_into_words(string $input): array {
+  $i = 0;
+  $result = [];
+  while ($i < strlen($input)) {
+    $first = $input[$i];
+    if ($first === '<') {
+      // ...
+    }
+  }
+  return $result;
+}`);
+  >
+
+  +frame{単語への分割}<
+    +code-block-php(`while ($i < strlen($input)) {
+  $first = $input[$i];
+  if ($first === '<') {
+    ...
+  } else if ($first === '(') {
+    $result[] = Word::LeftParen;
+    $i += 1;
+  } else if ($first === ')') {
+    $result[] = Word::RightParen;
+    $i += 1;
+  } else if (...) {
+    ...
+  }
+}`);
+  >
+
+  +frame{単語への分割}<
+    +code-block-php(#`  ...
+  } else if (ctype_space($first)) {
+    $i += 1;
+  } else if (ctype_digit($first)) {
+    $j = $i;
+    while (ctype_digit($input[$j])) {
+      $j += 1;
+    }
+    $result[] = (int) substr($input, $i, $j - $i);
+    $i = $j;
+  } else if (...) {
+    ...`);
+  >
+
+  +frame{単語への分割}<
+    +code-block-php(#`  ...
+  } else if (ctype_alpha($first)) {
+    $j = $i;
+    while (ctype_alpha($input[$j])) {
+      $j += 1;
+    }
+    $result[] = match (substr($input, $i, $j - $i)) {
+      'echo' => Word::Echo_,
+      'for' => Word::For_,
+      'if' => Word::If_,
+      'elseif' => Word::ElseIf_,
+      'else' => Word::Else_,
+    };
+    $i = $j;
+  } else if (...) {
+    ...`);
+  >
+
+  +frame{単語への分割}<
+    +code-block-php(`<?php
+for ($i = 1; $i <= 100; $i++) {
+  if ($i % 15 === 0) {
+    echo "FizzBuzz";
+  } elseif ($i % 3 === 0) {
+    echo "Fizz";
+  } elseif ($i % 5 === 0) {
+    echo "Buzz";
+  } else {
+    echo $i;
+  }
+  echo "\n";
+}`);
+  >
+
+  +frame{単語への分割}<
+    +code-block-php(`[
+  Word::PhpTag,
+  Word::For_,
+  Word::LeftParen,
+  new Variable("i"),
+  Word::Assign,
+  1,
+  Word::Semicolon,
+  ...,
+]`);
+  >
+
+  +frame{次のステップ}<
+    +p{単語の配列を前から順番に見ていき、対応する処理をおこなう}
+  >
+
+  +frame{実行する}<
+    +code-block-php(`class Php
+  private array $words;
+  private int $position;
+  private array $variables;
+
+  public function __construct(array $words) {
+    $this->words = $words;
+    $this->position = 0;
+    $this->variables = [];
+  }
+}`);
+  >
+
+  +frame{実行する}<
+    +code-block-php(`class Php {
+  ...
+  public function runPhp() {
+    $this->expectWord(Word::PhpTag);
+    $this->runStatements();
+  }
+  private function expectWord(Word $expected_word) {
+    if ($this->words[$this->position] !== $expected_word) {
+      throw new RuntimeException(...);
+    }
+    $this->position += 1;
+  }
+}`);
+  >
+
+  +frame{実行する}<
+    +code-block-php(`private function runStatements() {
+  while (true) {
+    $first = $this->words[$this->position] ?? null;
+    if ($first === Word::For_) {
+      $this->runForStatement();
+    } else if ($first === Word::If_) {
+      $this->runIfStatement();
+    } else if ($first === Word::Echo_) {
+      $this->runEchoStatement();
+    } else {
+      break;
+    }
+  }
+}`);
+  >
+
+  +frame{実行する}<
+    +code-block-php(`private function runEchoStatement() {
+  $this->position += 1; // skip 'echo'
+  $value = $this->calculateExpression();
+  echo $value;
+  $this->expectWord(Word::Semicolon);
+}`);
+  >
+
+  +frame{実行する}<
+    +code-block-php(`private function calculateExpression() {
+  $left_hand_side = $this->getNextWord();
+  while (true) {
+    $next_word = $this->words[$this->position];
+    if ($next_word === Word::StrictlyEqual) {
+      $this->position += 1; // skip '==='
+      $right_hand_side = $this->getNextWord();
+      $left_hand_side = $left_hand_side === $right_hand_side;
+    } else if (...) {
+      ...
+    } else {
+      return $left_hand_side;
+    }
+  }
+}`);
+  >
+
+  +frame{実行する}<
+    +code-block-php(`private function runIfStatement() {
+  $this->position += 1; // skip 'if'
+  $this->expectWord(Word::LeftParen);
+  $condition = $this->calculateExpression();
+  $this->expectWord(Word::RightParen);
+  $this->expectWord(Word::LeftBrace);
+  $this->runStatements();
+  $this->expectWord(Word::RightBrace);
+}`);
+  >
+
+  +frame{実行する}<
+    +code-block-php(`private function runIfStatement(bool $doRun = true) {
+  $this->position += 1; // skip 'if'
+  $this->expectWord(Word::LeftParen);
+  $condition = $this->calculateExpression($doRun);
+  $this->expectWord(Word::RightParen);
+  $this->expectWord(Word::LeftBrace);
+  $this->runStatements($doRun && $condition);
+  $this->expectWord(Word::RightBrace);
+}`);
+  >
+
+  +frame{実行する}<
+    +code-block-php(`private function runEchoStatement(bool $doRun = true) {
+  $this->position += 1; // skip 'echo'
+  $value = $this->calculateExpression($doRun);
+  if ($doRun) {
+    echo $value;
+  }
+  $this->expectWord(Word::Semicolon);
+}`);
+  >
+
+  +frame{実行する}<
+    +code-block-php(`for ($i = 1; $i <= 100; $i++) {
+  ...
+}`);
+  >
+
+  +frame{実行する}<
+    +code-block-php(#`  $this->calculateExpression($doRun);
+  $condition_position = $this->position;
+  while (true) {
+    $condition_result = $this->calculateExpression($doRun);
+    $update_position = $this->position;
+    if (!$condition_result) {
+      $this->calculateExpression(doRun: false);
+      $this->runStatements(doRun: false);
+      break;
+    }
+    $this->calculateExpression(doRun: false);
+    $this->runStatements($doRun);
+    $this->position = $update_position;
+    $this->calculateExpression($doRun);
+    $this->position = $condition_position;
+  }
+}`);
+  >
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
   +frame{まとめ}<
-    +p{TODO}
+    +listing{
+      * 簡単な言語処理系は簡単に作れる
+      * 今回の実装は286行
+      * 昔の PHP は、これと大して変わらないくらいのアーキテクチャだった
+    }
+  >
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  +frame{宣伝}<
+    +p{PHPカンファレンス小田原2025 (4/12)}
+    +p{11/4 プロポーザル募集開始！}
+    +p{「匿名プロポーザル」を実施します (詳細は note 記事へ)}
   >
 
 >

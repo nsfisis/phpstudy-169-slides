@@ -1,1 +1,1 @@
-https://phpstudy.connpass.com/event/TODO/
+https://phpstudy.connpass.com/event/332735/
